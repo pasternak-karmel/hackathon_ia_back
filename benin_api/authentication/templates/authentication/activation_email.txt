@@ -1,0 +1,12 @@
+Bonjour {{ user.username }},
+
+Merci de vous être inscrit sur notre plateforme. Pour activer votre compte, veuillez cliquer sur le lien ci-dessous :
+
+{{ activation_url }}
+
+Ce lien est valable pendant 24 heures.
+
+Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.
+
+Cordialement,
+L'équipe Impact CSE
