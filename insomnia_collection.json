@@ -1,0 +1,140 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-09-25T11:30:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_extract_from_url",
+      "parentId": "fld_benin_api",
+      "modified": 1695640200000,
+      "created": 1695640200000,
+      "url": "http://127.0.0.1:8081/api/extract-from-url/",
+      "name": "🌐 Extract from URL",
+      "description": "Extrait les coordonnées depuis une URL (S3, CDN, etc.)",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"url\": \"https://example.com/leve_topographique.png\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1695640200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_extract_coordinates",
+      "parentId": "fld_benin_api",
+      "modified": 1695640300000,
+      "created": 1695640300000,
+      "url": "http://127.0.0.1:8081/api/extract-coordinates/",
+      "name": "📁 Extract from File Upload",
+      "description": "Extrait les coordonnées depuis un fichier uploadé",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "file",
+            "value": "",
+            "description": "Fichier PNG/JPG/PDF du levé topographique",
+            "type": "file"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1695640300000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_health_check",
+      "parentId": "fld_benin_api",
+      "modified": 1695640400000,
+      "created": 1695640400000,
+      "url": "http://127.0.0.1:8081/api/health/",
+      "name": "🏥 Health Check",
+      "description": "Vérification de santé de l'API",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1695640400000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_api_info",
+      "parentId": "fld_benin_api",
+      "modified": 1695640500000,
+      "created": 1695640500000,
+      "url": "http://127.0.0.1:8081/api/info/",
+      "name": "ℹ️ API Info",
+      "description": "Informations sur l'API",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1695640500000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_benin_api",
+      "parentId": "wrk_main",
+      "modified": 1695640100000,
+      "created": 1695640100000,
+      "name": "🗺️ Benin Survey API",
+      "description": "API d'extraction des coordonnées des levés topographiques béninois",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1695640100000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_main",
+      "parentId": null,
+      "modified": 1695640000000,
+      "created": 1695640000000,
+      "name": "Hackathon Foncier Bénin 2025",
+      "description": "Collection pour tester l'API d'extraction des coordonnées",
+      "scope": "collection",
+      "_type": "workspace"
+    }
+  ]
+}

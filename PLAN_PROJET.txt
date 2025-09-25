@@ -1,0 +1,113 @@
+Hackathon Foncier Bénin - Plan de Projet
+Dernière mise à jour: 2025-09-24 20:29:22+02:00
+
+1) Objectif
+- Automatiser le traitement d'un levé topographique soumis par un client afin de produire un rapport et un fichier submission.csv indiquant les intersections avec 14 couches géospatiales.
+
+2) Livrables
+- Fichier de soumission: submission.csv
+- Plateforme web fonctionnelle (UI upload + visualisation + API)
+- Dépôt GitHub du code
+- Présentation et démo
+
+3) Données et ressources
+- Dossier "Training Data/": images de levés annotés
+- Dossier "Testing Data/": images de levés à prédire
+- Dossier "couche/": couches geojson (EPSG:32631)
+- Fichier groundtruth_training.xlsx: vérité terrain (format non texte)
+
+4) Flux de traitement (pipeline)
+A. Ingestion
+   - Upload d'une image de levé (jpg/png)
+   - Normalisation (redressement, recadrage, binarisation si nécessaire)
+
+B. Extraction d'informations (OCR + Vision)
+   - Détection du tableau des coordonnées (B1, B2, B3, B4, ...)
+   - OCR des paires (X, Y) en WGS84
+   - Nettoyage et validation (nombres valides, bornes plausibles au Bénin)
+   - Métadonnées: numéro de titre, surface, échelle (si disponibles)
+
+C. Construction géométrique
+   - Conversion des points (X, Y) -> polygone (ordre: suivre la numérotation)
+   - Projection dans EPSG:32631 si nécessaire
+   - Contrôles: polygone fermé, surface > 0, orientation, self-intersection
+
+D. Analyses géospatiales
+   - Chargement des couches geojson suivantes:
+     aif, air_proteges, dpl, dpm, enregistrement individuel,
+     litige, parcelles, restriction, tf_demembres, tf_en_cours,
+     tf_etat, titre_reconstitue, zone_inondable
+   - Intersection (OUI/NON) de la géométrie du levé avec chaque couche
+
+E. Génération des sorties
+   - Ligne submission.csv:
+     Nom_du_levé;Coordonnées;[14 indicateurs OUI/NON dans l'ordre]
+   - Rapport JSON/HTML récapitulatif + carte
+
+5) Architecture de la solution
+- Frontend: Web UI (Upload, aperçu, carte, téléchargement résultats)
+- Backend API: Python (FastAPI/Flask)
+  * Endpoints: /health, /analyze (POST image), /layers (GET), /preview (GET)
+- Moteur géospatial: GeoPandas, Shapely, PyProj
+- OCR: PaddleOCR ou Tesseract + heuristiques table
+- Stockage: fichiers locaux; option PostGIS si besoin
+
+6) Schéma submission.csv (colonnes)
+- Nom_du_levé
+- Coordonnées: liste JSON de points [{"x":..., "y":...}, ...]
+- aif; air_proteges; dpl; dpm; enregistrement individuel; litige; parcelles; restriction; tf_demembres; tf_en_cours; tf_etat; titre_reconstitue; zone_inondable
+
+7) Stratégie d'extraction OCR
+- Pré-traitement: débruitage, contraste, deskew
+- Localisation du tableau par détection de lignes (morphologie OpenCV)
+- OCR cellules (x,y) + regex nombres (décimales)
+- Reconstitution ordre des bornes (B1..Bn)
+- Fallback: saisie manuelle guidée si OCR échoue
+
+8) Validation & QA
+- Règles géométriques: aire minimale, self-intersection, diagonales cohérentes
+- Cross-check: surface du plan vs surface mesurée
+- Tests unitaires: extraction, projection, intersection
+
+9) Visualisation
+- Carte web (Leaflet) centrée sur le polygone
+- Superposition des couches sélectionnables
+- Popups d'attributs intersectés
+
+10) Plan de réalisation (jalons)
+J1: Setup repo + structure + lecture des couches + chargeur d'images
+J2: Prototype OCR des coordonnées + reconstruction polygone
+J3: Intersections et génération submission.csv
+J4: UI web (upload + résultat + carte)
+J5: Robustesse, logs, tests, préparation démo
+
+11) Structure de repo recommandée
+- app/
+  api/
+  ocr/
+  geo/
+  web/
+  utils/
+- data/
+  couche/
+  Training Data/
+  Testing Data/
+- outputs/
+- submission.csv
+- requirements.txt
+- README.md
+
+12) Configuration & outils
+- Python 3.10+
+- Packages: fastapi, uvicorn, opencv-python, paddleocr ou pytesseract, geopandas, shapely, pyproj, pandas
+
+13) Risques & mitigations
+- OCR variable: prévoir correction semi-manuelle
+- Incohérences de projection: normaliser en EPSG:32631
+- Qualité des scans: filtres adaptatifs + gabarits
+
+14) Prochaines actions
+- Initialiser le projet (requirements, README, squelette FastAPI)
+- Importer et tester le chargement des couches geojson
+- Prototyper l'extraction de 4 bornes sur quelques images tests
+- Implémenter l'intersection et produire une première ligne submission.csv
