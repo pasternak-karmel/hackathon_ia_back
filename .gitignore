@@ -132,6 +132,11 @@ Testing\ Data/
 *.tif
 *.tiff
 
+# Exceptions : fichiers spécifiques à inclure dans le repo
+!leve16.png
+!Document\ sans\ titre-3.pdf
+!analysis_visualization.png
+
 # Résultats et analyses
 Results/
 analysis_results.json
