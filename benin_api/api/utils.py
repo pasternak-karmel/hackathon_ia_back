@@ -10,7 +10,7 @@ from PIL import Image
 import io
 import tempfile
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote, unquote
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 
@@ -60,16 +60,54 @@ def infer_extension_from_content_type(content_type: str) -> str:
         'image/png': '.png',
         'image/jpeg': '.jpg',
         'application/pdf': '.pdf',
+        'application/octet-stream': '',  # Accepter octet-stream (GitHub utilise ça pour les PDFs)
     }
     return mapping.get(content_type.split(';')[0].strip(), '')
+
+def convert_github_url_to_raw(url: str) -> str:
+    """
+    Convertit une URL GitHub blob vers une URL raw pour accès direct au fichier
+    Gère aussi l'encodage correct des noms de fichiers avec espaces et évite le double encodage
+    """
+    if "github.com" in url and "/blob/" in url:
+        # Convertir https://github.com/user/repo/blob/branch/file vers https://raw.githubusercontent.com/user/repo/branch/file
+        url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+        
+        # Parser l'URL pour gérer correctement l'encodage
+        parsed = urlparse(url)
+        # Séparer le chemin en parties
+        path_parts = parsed.path.split('/')
+        if len(path_parts) >= 4:  # /user/repo/branch/filename...
+            # Décoder d'abord le nom de fichier pour éviter le double encodage
+            filename = path_parts[-1]
+            # Décoder plusieurs fois si nécessaire (pour gérer le double encodage)
+            decoded_filename = filename
+            # Décoder jusqu'à ce qu'il n'y ait plus de changement
+            while True:
+                new_decoded = unquote(decoded_filename)
+                if new_decoded == decoded_filename:
+                    break
+                decoded_filename = new_decoded
+            # Re-encoder proprement une seule fois
+            encoded_filename = quote(decoded_filename, safe='.-_')
+            path_parts[-1] = encoded_filename
+            # Reconstruire le chemin
+            new_path = '/'.join(path_parts)
+            url = f"{parsed.scheme}://{parsed.netloc}{new_path}"
+    
+    return url
 
 def download_file_from_url(url: str, max_size_bytes: int = 50 * 1024 * 1024) -> str:
     """
     Télécharge un fichier depuis une URL HTTP(S) vers un fichier temporaire sécurisé.
     Valide la taille et le type de contenu.
+    Convertit automatiquement les URLs GitHub blob vers raw.
 
     Returns: chemin du fichier temporaire
     """
+    # Convertir URL GitHub si nécessaire
+    url = convert_github_url_to_raw(url)
+    
     # Valider schéma URL
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -82,14 +120,31 @@ def download_file_from_url(url: str, max_size_bytes: int = 50 * 1024 * 1024) -> 
         content_type = r.headers.get('Content-Type', '').lower()
         content_length = r.headers.get('Content-Length')
 
-        # Déduire extension
+        # Déduire extension depuis l'URL
         ext = os.path.splitext(parsed.path)[1].lower()
-        if not is_supported_extension(ext):
+        
+        # Si l'extension de l'URL est supportée, l'utiliser
+        if is_supported_extension(ext):
+            # Extension valide trouvée dans l'URL
+            pass
+        else:
             # Essayer avec le content-type
-            ext = infer_extension_from_content_type(content_type)
+            ext_from_content = infer_extension_from_content_type(content_type)
+            if ext_from_content:
+                ext = ext_from_content
+            elif content_type == 'application/octet-stream':
+                # GitHub utilise octet-stream, essayer de deviner depuis l'URL
+                if any(x in parsed.path.lower() for x in ['.pdf', '.png', '.jpg', '.jpeg']):
+                    # Garder l'extension de l'URL même si pas reconnue initialement
+                    pass
+                else:
+                    raise ValueError(f"Impossible de déterminer le type de fichier depuis l'URL: {parsed.path}")
+            else:
+                raise ValueError(f"Type de contenu non supporté: {content_type or 'inconnu'}")
 
-        if ext not in {'.png', '.jpg', '.jpeg', '.pdf'}:
-            raise ValueError(f"Type de contenu non supporté: {content_type or 'inconnu'}")
+        # Vérification finale
+        if ext and ext not in {'.png', '.jpg', '.jpeg', '.pdf'}:
+            raise ValueError(f"Extension de fichier non supportée: {ext}")
 
         # Vérifier taille si connue
         if content_length is not None:
@@ -139,7 +194,15 @@ def get_coordinates(file_path: str):
             content=[
                 {
                     "type": "text",
-                    "text": "Extrait moi les coordonnées et renvoi moi juste une liste de dict sous ce format : [{'x': 321562.2, 'y': 1135517.34}, {'x': 321590.39, 'y': 1135506.9}, etc...]",
+                    "text": """Extrait les coordonnées des bornes de ce levé topographique et retourne-les au format JSON valide.
+                    
+Format de réponse attendu (JSON avec guillemets doubles) :
+[
+  {"x": 321562.2, "y": 1135517.34},
+  {"x": 321590.39, "y": 1135506.9}
+]
+
+IMPORTANT: Utilise uniquement des guillemets doubles (") pour le JSON, pas de guillemets simples (').""",
                 },
                 {"type": "image_url", "image_url": png_to_base64_uri(file_path)},
             ]
@@ -197,7 +260,15 @@ def parse_coordinates_response(response_content: str) -> list:
             if isinstance(coordinates, list):
                 return coordinates
         except json.JSONDecodeError:
-            pass
+            # Essayer de convertir les guillemets simples en guillemets doubles
+            try:
+                # Remplacer les guillemets simples par des guillemets doubles pour JSON valide
+                content_fixed = content.replace("'", '"')
+                coordinates = json.loads(content_fixed)
+                if isinstance(coordinates, list):
+                    return coordinates
+            except json.JSONDecodeError:
+                pass
         
         # Fallback: chercher avec regex
         pattern = r"\{'x':\s*([\d.]+),\s*'y':\s*([\d.]+)\}"

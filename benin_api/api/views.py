@@ -332,9 +332,12 @@ def extract_coordinates_from_url(request):
         coordinates = parse_coordinates_response(coordinates_raw)
         validation = validate_benin_coordinates(coordinates)
 
-        # Métadonnées
+        # Métadonnées avec URL convertie si nécessaire
+        from .utils import convert_github_url_to_raw
+        converted_url = convert_github_url_to_raw(url)
         metadata = {
             'source_url': url,
+            'converted_url': converted_url if converted_url != url else None,
             'processing_status': 'success'
         }
 
