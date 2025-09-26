@@ -70,6 +70,11 @@ class ExtractCoordinatesResponseSerializer(serializers.Serializer):
     metadata = MetadataSerializer(
         help_text="Métadonnées du fichier traité"
     )
+    centroid = CoordinateSerializer(
+        help_text="Centre géométrique (centroïde) de toutes les coordonnées valides",
+        required=False,
+        allow_null=True
+    )
     raw_response = serializers.CharField(
         help_text="Réponse brute de l'IA (tronquée à 500 caractères)",
         required=False

@@ -19,7 +19,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
-from .utils import get_coordinates, parse_coordinates_response, validate_benin_coordinates, download_file_from_url
+from .utils import get_coordinates, parse_coordinates_response, validate_benin_coordinates, download_file_from_url, calculate_centroid
 from .serializers import (
     ExtractCoordinatesResponseSerializer, 
     ErrorResponseSerializer,
@@ -170,6 +170,9 @@ def extract_coordinates(request):
             "processing_status": "success"
         }
         
+        # Calculer le centroïde des coordonnées valides
+        centroid = calculate_centroid(validation["valid_coordinates"])
+        
         response_data = {
             "success": True,
             "coordinates": validation["valid_coordinates"],
@@ -181,6 +184,7 @@ def extract_coordinates(request):
                 "invalid_coordinates": validation["invalid_coordinates"]
             },
             "metadata": metadata,
+            "centroid": centroid,  # NOUVEAU: Centre géométrique des coordonnées
             "raw_response": coordinates_raw[:500] + "..." if len(coordinates_raw) > 500 else coordinates_raw
         }
         
@@ -341,6 +345,9 @@ def extract_coordinates_from_url(request):
             'processing_status': 'success'
         }
 
+        # Calculer le centroïde des coordonnées valides
+        centroid = calculate_centroid(validation['valid_coordinates'])
+        
         response_data = {
             'success': True,
             'coordinates': validation['valid_coordinates'],
@@ -352,6 +359,7 @@ def extract_coordinates_from_url(request):
                 'invalid_coordinates': validation['invalid_coordinates']
             },
             'metadata': metadata,
+            'centroid': centroid,  # NOUVEAU: Centre géométrique des coordonnées
             'raw_response': coordinates_raw[:500] + '...' if len(coordinates_raw) > 500 else coordinates_raw
         }
 

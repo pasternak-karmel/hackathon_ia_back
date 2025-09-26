@@ -14,6 +14,29 @@ from urllib.parse import urlparse, quote, unquote
 from google import genai
 
 
+def calculate_centroid(coordinates):
+    """
+    Calcule le centroïde (centre géométrique) d'une liste de coordonnées
+    
+    Args:
+        coordinates (list): Liste de dictionnaires avec clés 'x' et 'y'
+        
+    Returns:
+        dict: Coordonnées du centroïde {'x': float, 'y': float} ou None si liste vide
+    """
+    if not coordinates:
+        return None
+    
+    total_x = sum(coord['x'] for coord in coordinates)
+    total_y = sum(coord['y'] for coord in coordinates)
+    count = len(coordinates)
+    
+    return {
+        "x": round(total_x / count, 2),
+        "y": round(total_y / count, 2)
+    }
+
+
 def png_to_base64_uri(image_path: str) -> str:
     """
     Convertit une image PNG en URI base64 (data:image/png;base64,...).
