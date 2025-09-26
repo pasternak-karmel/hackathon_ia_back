@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'api',
+    'chatbot',
 ]
 
 MIDDLEWARE = [

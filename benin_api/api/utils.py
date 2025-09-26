@@ -11,8 +11,7 @@ import io
 import tempfile
 import requests
 from urllib.parse import urlparse, quote, unquote
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+from google import genai
 
 
 def png_to_base64_uri(image_path: str) -> str:
@@ -180,21 +179,23 @@ def get_coordinates(file_path: str):
       str : Return the coordinates
     """
     # Récupération de la clé api
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY non trouvée dans les variables d'environnement")
+        raise ValueError("GOOGLE_API_KEY ou GEMINI_API_KEY non trouvée dans les variables d'environnement")
 
-    # Initialisation du model
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", api_key=api_key)
+    # Configuration de l'API key et initialisation du client
+    os.environ["GEMINI_API_KEY"] = api_key
+    client = genai.Client()
+    model_name = "gemini-2.5-flash"
 
     # Traitement images .png
     if file_path.lower().endswith((".png", ".jpg", ".jpeg")):
-        message = HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": """Extrait les coordonnées des bornes de ce levé topographique et retourne-les au format JSON valide.
+        # Charger l'image
+        from PIL import Image
+        img = Image.open(file_path)
+        
+        prompt = """Extrait les coordonnées des bornes de ce levé topographique et retourne-les au format JSON valide.
                     
 Format de réponse attendu (JSON avec guillemets doubles) :
 [
@@ -202,30 +203,37 @@ Format de réponse attendu (JSON avec guillemets doubles) :
   {"x": 321590.39, "y": 1135506.9}
 ]
 
-IMPORTANT: Utilise uniquement des guillemets doubles (") pour le JSON, pas de guillemets simples (').""",
-                },
-                {"type": "image_url", "image_url": png_to_base64_uri(file_path)},
-            ]
+IMPORTANT: Utilise uniquement des guillemets doubles (") pour le JSON, pas de guillemets simples (')."""
+        
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[prompt, img]
         )
-        result = llm.invoke([message])
-        return result
+        
+        # Créer un objet similaire à la réponse langchain pour compatibilité
+        class MockResponse:
+            def __init__(self, text):
+                self.content = text
+        
+        return MockResponse(response.text)
 
     # Traitement pdf
     elif file_path.lower().endswith(".pdf"):
         images = pdf_to_images(file_path)
-        base_64 = pil_image_to_data_uri(images[0])
-
-        message = HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": "Extrait moi les coordonnées et renvoi moi juste une liste de dict sous ce format :  [{'x': 321562.2, 'y': 1135517.34}, {'x': 321590.39, 'y': 1135506.9}, etc...]",
-                },
-                {"type": "image_url", "image_url": base_64},
-            ]
+        
+        prompt = "Extrait moi les coordonnées et renvoi moi juste une liste de dict sous ce format :  [{'x': 321562.2, 'y': 1135517.34}, {'x': 321590.39, 'y': 1135506.9}, etc...]"
+        
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[prompt, images[0]]
         )
-        result = llm.invoke([message])
-        return result
+        
+        # Créer un objet similaire à la réponse langchain pour compatibilité
+        class MockResponse:
+            def __init__(self, text):
+                self.content = text
+        
+        return MockResponse(response.text)
     
     else:
         raise ValueError("Format de fichier non supporté. Utilisez PNG, JPG, JPEG ou PDF.")
