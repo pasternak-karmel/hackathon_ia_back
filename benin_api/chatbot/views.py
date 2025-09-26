@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def ask_chatbot(request):
     """
     Endpoint principal pour poser une question au chatbot expert foncier avec streaming et historique
-    MAINTENANT AVEC SAUVEGARDE AUTOMATIQUE EN BASE DE DONNÉES
+    MAINTENANT AVEC SAUVEGARDE AUTOMATIQUE EN BASE DE DONNÉES + SUPPORT MULTIMODAL
     
     POST /api/chatbot/ask/
     {
@@ -39,27 +39,41 @@ def ask_chatbot(request):
             "parcelle_id": "optional"
         },
         "conversation_id": "uuid-optional",  // Si fourni, ajoute à la conversation existante
-        "conversation_history": [
-            {"role": "user", "content": "Qu'est-ce que l'ANDF ?"},
-            {"role": "assistant", "content": "L'ANDF est l'Agence Nationale..."},
-            {"role": "user", "content": "Quels sont ses services ?"}
-        ]
+        "conversation_history": [...],
+        "audio_file": "base64_encoded_audio",  // NOUVEAU: Support audio
+        "image_file": "base64_encoded_image",  // NOUVEAU: Support image
+        "media_type": "text|audio|image"      // NOUVEAU: Type de média
     }
     """
     from django.http import StreamingHttpResponse
     import json
     
     try:
-        # Récupérer les paramètres
+        # Récupérer les paramètres (COMPATIBILITÉ MULTIMODALE AJOUTÉE)
         question = request.data.get('question', '').strip()
         context = request.data.get('context', {})
         conversation_history = request.data.get('conversation_history', [])
         conversation_id = request.data.get('conversation_id', None)
         
-        if not question:
+        # NOUVEAUX PARAMÈTRES MULTIMODAUX (optionnels pour rétrocompatibilité)
+        media_type = request.data.get('media_type', 'text')
+        media_data = request.data.get('media_data', '')
+        audio_file = request.data.get('audio_file', '')  # Alternative pour audio
+        image_file = request.data.get('image_file', '')  # Alternative pour image
+        
+        # DÉTECTION AUTOMATIQUE DU TYPE DE MÉDIA
+        if not media_data and audio_file:
+            media_data = audio_file
+            media_type = 'audio'
+        elif not media_data and image_file:
+            media_data = image_file
+            media_type = 'image'
+        
+        # Validation : question OU média requis
+        if not question and not media_data:
             return Response({
                 "success": False,
-                "error": "Question requise"
+                "error": "Question ou fichier média requis"
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Log de la question
@@ -89,18 +103,23 @@ def ask_chatbot(request):
                         user=request.user if request.user.is_authenticated else None
                     )
                 
-                # 2. SAUVEGARDER LE MESSAGE UTILISATEUR
+                # 2. SAUVEGARDER LE MESSAGE UTILISATEUR (avec info multimodale)
+                user_content = question if question else f"[Fichier {media_type} envoyé]"
                 user_message = Message.objects.create(
                     conversation=conversation,
                     role='user',
-                    content=question,
-                    context_used={"context": context}
+                    content=user_content,
+                    context_used={
+                        "context": context,
+                        "media_type": media_type,
+                        "has_media": bool(media_data)
+                    }
                 )
                 
                 # Obtenir le service chatbot
                 chatbot = get_chatbot_service()
                 
-                # Envoyer les métadonnées d'abord (avec l'ID de conversation)
+                # Envoyer les métadonnées d'abord (avec info multimodale)
                 metadata = {
                     "type": "metadata",
                     "question": question,
@@ -108,21 +127,74 @@ def ask_chatbot(request):
                     "source": "ANDF + Expert IA",
                     "streaming": True,
                     "conversation_history_count": len(conversation_history),
-                    "conversation_id": str(conversation.id),  # Retourner l'ID de la conversation
-                    "saved_to_database": True
+                    "conversation_id": str(conversation.id),
+                    "saved_to_database": True,
+                    "media_type": media_type,  # NOUVEAU: Type de média
+                    "has_media": bool(media_data)  # NOUVEAU: Présence de média
                 }
                 yield f"data: {json.dumps(metadata, ensure_ascii=False)}\n\n"
                 
-                # Rechercher des documents pertinents
-                relevant_docs = chatbot.search_relevant_documents(question)
-                
-                # Streamer la réponse en temps réel avec Gemini et historique
-                for chunk_data in chatbot.generate_response_stream_with_history(question, relevant_docs, conversation_history):
-                    # Accumuler le texte de la réponse IA
-                    if chunk_data.get("type") == "chunk":
-                        ai_response_text += chunk_data.get("content", "")
+                # TRAITEMENT MULTIMODAL OU TEXTE
+                if media_type != 'text' and media_data:
+                    # TRAITEMENT MULTIMODAL (image/audio)
+                    if media_type == 'image':
+                        response_data = chatbot.process_image_with_question(question or "", media_data, context)
+                    elif media_type == 'audio':
+                        response_data = chatbot.process_audio_with_question(question or "", media_data, context)
+                    else:
+                        # Fallback vers traitement texte
+                        relevant_docs = chatbot.search_relevant_documents(question)
+                        response_data = chatbot.generate_response(question, relevant_docs)
                     
-                    yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                    # Simuler le streaming pour le multimodal (pour garder le même format)
+                    if response_data.get("success"):
+                        full_text = response_data["answer"]
+                        words = full_text.split()
+                        accumulated_text = ""
+                        
+                        for word in words:
+                            accumulated_text += word + " "
+                            chunk_data = {
+                                "type": "chunk",
+                                "content": word + " ",
+                                "accumulated": accumulated_text.strip(),
+                                "success": True,
+                                "media_processed": media_type  # NOUVEAU: Indique le type de média traité
+                            }
+                            ai_response_text += word + " "
+                            yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                        
+                        # Message final pour multimodal
+                        final_chunk = {
+                            "type": "complete",
+                            "final_text": full_text,
+                            "context_used": 0,
+                            "source": "ANDF + Expert IA",
+                            "success": True,
+                            "media_type": media_type,
+                            "processing_method": response_data.get("method", "multimodal")
+                        }
+                        yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
+                    else:
+                        # Erreur multimodale
+                        error_chunk = {
+                            "type": "error",
+                            "error": f"Erreur traitement {media_type}: {response_data.get('error', 'Erreur inconnue')}",
+                            "success": False
+                        }
+                        yield f"data: {json.dumps(error_chunk, ensure_ascii=False)}\n\n"
+                        return
+                else:
+                    # TRAITEMENT TEXTE NORMAL (comportement existant)
+                    relevant_docs = chatbot.search_relevant_documents(question)
+                    
+                    # Streamer la réponse en temps réel avec Gemini et historique
+                    for chunk_data in chatbot.generate_response_stream_with_history(question, relevant_docs, conversation_history):
+                        # Accumuler le texte de la réponse IA
+                        if chunk_data.get("type") == "chunk":
+                            ai_response_text += chunk_data.get("content", "")
+                        
+                        yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
                 
                 # 3. SAUVEGARDER LA RÉPONSE IA COMPLÈTE
                 if ai_response_text.strip():
@@ -131,8 +203,10 @@ def ask_chatbot(request):
                         role='assistant',
                         content=ai_response_text.strip(),
                         context_used={
-                            "documents_used": len(relevant_docs) if relevant_docs else 0,
-                            "context": context
+                            "documents_used": len(relevant_docs) if 'relevant_docs' in locals() else 0,
+                            "context": context,
+                            "media_type": media_type,
+                            "processing_method": "multimodal" if media_type != 'text' else "text"
                         }
                     )
                     
@@ -573,3 +647,123 @@ class ConversationViewSet(ModelViewSet):
             "conversations": serializer.data,
             "count": len(serializer.data)
         }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def ask_chatbot_multimodal(request):
+    """
+    Endpoint pour questions multimodales (audio, image, vidéo)
+    
+    POST /api/chatbot/multimodal/
+    {
+        "question": "Analysez ce document foncier",
+        "media_type": "image|audio|video",
+        "media_data": "base64_encoded_data",
+        "context": {...},
+        "conversation_id": "uuid-optional"
+    }
+    """
+    try:
+        # Récupérer les paramètres
+        question = request.data.get('question', '').strip()
+        media_type = request.data.get('media_type', 'text')
+        media_data = request.data.get('media_data', '')
+        context = request.data.get('context', {})
+        conversation_id = request.data.get('conversation_id', None)
+        
+        if not question and not media_data:
+            return Response({
+                "success": False,
+                "error": "Question ou média requis"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Variables pour stocker la conversation
+        conversation = None
+        user_message = None
+        
+        try:
+            # 1. CRÉER OU RÉCUPÉRER LA CONVERSATION
+            if conversation_id:
+                try:
+                    conversation = Conversation.objects.get(id=conversation_id, is_active=True)
+                except Conversation.DoesNotExist:
+                    conversation = None
+            
+            if not conversation:
+                # Créer une nouvelle conversation
+                title = question[:50] if question else f"Analyse {media_type}"
+                conversation = Conversation.objects.create(
+                    title=title + ('...' if len(title) > 50 else ''),
+                    user=request.user if request.user.is_authenticated else None
+                )
+            
+            # 2. SAUVEGARDER LE MESSAGE UTILISATEUR
+            user_content = question if question else f"[Fichier {media_type} envoyé]"
+            user_message = Message.objects.create(
+                conversation=conversation,
+                role='user',
+                content=user_content,
+                context_used={
+                    "context": context,
+                    "media_type": media_type,
+                    "has_media": bool(media_data)
+                }
+            )
+            
+            # 3. TRAITER LE MÉDIA ET GÉNÉRER LA RÉPONSE
+            chatbot = get_chatbot_service()
+            
+            if media_type == 'image' and media_data:
+                # Traitement d'image
+                response_data = chatbot.process_image_with_question(question, media_data, context)
+            elif media_type == 'audio' and media_data:
+                # Traitement audio
+                response_data = chatbot.process_audio_with_question(question, media_data, context)
+            else:
+                # Fallback vers traitement texte normal
+                relevant_docs = chatbot.search_relevant_documents(question)
+                response_data = chatbot.generate_response(question, relevant_docs)
+            
+            if response_data.get("success"):
+                # 4. SAUVEGARDER LA RÉPONSE IA
+                ai_message = Message.objects.create(
+                    conversation=conversation,
+                    role='assistant',
+                    content=response_data["answer"],
+                    context_used={
+                        "media_processed": media_type,
+                        "context": context,
+                        "processing_method": response_data.get("method", "text")
+                    }
+                )
+                
+                return Response({
+                    "success": True,
+                    "conversation_id": str(conversation.id),
+                    "user_message": MessageSerializer(user_message).data,
+                    "ai_message": MessageSerializer(ai_message).data,
+                    "media_type": media_type,
+                    "processing_info": response_data.get("processing_info", {})
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "success": False,
+                    "error": "Erreur traitement multimodal",
+                    "details": response_data.get("error", "Erreur inconnue")
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            logger.error(f"Erreur traitement multimodal: {e}")
+            return Response({
+                "success": False,
+                "error": "Erreur interne du serveur",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        logger.error(f"Erreur endpoint multimodal: {e}")
+        return Response({
+            "success": False,
+            "error": "Erreur interne du serveur",
+            "details": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

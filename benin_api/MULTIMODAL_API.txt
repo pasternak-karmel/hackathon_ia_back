@@ -1,0 +1,251 @@
+===============================================================================
+                    API MULTIMODAL CHATBOT FONCIER BÉNINOIS
+                         (AUDIO, IMAGE, VIDÉO)
+===============================================================================
+
+BASE URL: http://127.0.0.1:8083/api/chatbot/
+
+MODÈLE: Gemini 2.5 Flash (Support multimodal natif)
+
+===============================================================================
+CAPACITÉS MULTIMODALES DISPONIBLES
+===============================================================================
+
+✅ AUDIO:
+- Traitement de fichiers audio (WAV, MP3, etc.)
+- Reconnaissance vocale native
+- Compréhension des questions parlées
+- Support multilingue (24+ langues)
+- Analyse du ton et des émotions
+
+✅ IMAGES:
+- Analyse de documents fonciers scannés
+- Lecture de plans cadastraux
+- Extraction d'informations de titres fonciers
+- Reconnaissance de texte (OCR natif)
+- Analyse de cartes et coordonnées
+
+✅ VIDÉO:
+- Traitement de vidéos explicatives
+- Analyse de présentations foncières
+- Extraction d'informations visuelles et audio
+
+===============================================================================
+ENDPOINT MULTIMODAL
+===============================================================================
+
+Endpoint: POST /api/chatbot/multimodal/
+Description: Traite des questions avec fichiers audio, image ou vidéo
+
+Corps de la requête:
+{
+    "question": "Analysez ce titre foncier",
+    "media_type": "image",
+    "media_data": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...",
+    "context": {
+        "coordinates": [404000, 719000],
+        "commune": "Cotonou"
+    },
+    "conversation_id": "uuid-optional"
+}
+
+Paramètres:
+- question (string, optionnel): Question textuelle
+- media_type (string): "image" | "audio" | "video"
+- media_data (string): Données encodées en base64
+- context (object, optionnel): Contexte géospatial
+- conversation_id (string, optionnel): ID de conversation existante
+
+===============================================================================
+EXEMPLES D'UTILISATION
+===============================================================================
+
+1. ANALYSE D'IMAGE (Titre foncier scanné)
+{
+    "question": "Quelles sont les informations principales de ce titre foncier ?",
+    "media_type": "image",
+    "media_data": "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "context": {
+        "commune": "Porto-Novo"
+    }
+}
+
+Réponse attendue:
+{
+    "success": true,
+    "conversation_id": "123e4567-...",
+    "user_message": {...},
+    "ai_message": {
+        "content": "D'après l'analyse de ce titre foncier, je peux identifier les éléments suivants : Numéro du titre: TF 12345/PP, Superficie: 500 m², Localisation: Quartier Gbegamey, Cotonou, Propriétaire: [Nom visible], Date d'établissement: 15/03/2020..."
+    },
+    "media_type": "image",
+    "processing_info": {
+        "image_processed": true,
+        "context_used": true
+    }
+}
+
+2. QUESTION AUDIO (Enregistrement vocal)
+{
+    "media_type": "audio",
+    "media_data": "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEA...",
+    "context": {
+        "coordinates": [404000, 719000]
+    }
+}
+
+Réponse attendue:
+{
+    "success": true,
+    "conversation_id": "456e7890-...",
+    "ai_message": {
+        "content": "D'après votre question audio sur la procédure d'immatriculation, voici les étapes à suivre au Bénin : 1) Constituer le dossier avec les pièces requises, 2) Déposer la demande à l'ANDF, 3) Procéder au bornage contradictoire..."
+    },
+    "media_type": "audio",
+    "processing_info": {
+        "audio_processed": true,
+        "speech_recognized": true
+    }
+}
+
+3. ANALYSE COMBINÉE (Image + Question)
+{
+    "question": "Ce plan cadastral est-il conforme aux normes ANDF ?",
+    "media_type": "image",
+    "media_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "context": {
+        "commune": "Abomey-Calavi",
+        "secteur": "Residential"
+    }
+}
+
+===============================================================================
+FORMATS DE FICHIERS SUPPORTÉS
+===============================================================================
+
+AUDIO:
+- WAV (recommandé)
+- MP3
+- M4A
+- OGG
+- Taille max: 10 MB
+
+IMAGES:
+- JPEG/JPG (recommandé)
+- PNG
+- GIF
+- BMP
+- WEBP
+- Taille max: 20 MB
+
+VIDÉO:
+- MP4 (recommandé)
+- AVI
+- MOV
+- WEBM
+- Taille max: 50 MB
+
+===============================================================================
+ENCODAGE BASE64
+===============================================================================
+
+Pour envoyer un fichier, vous devez l'encoder en base64:
+
+JavaScript:
+```javascript
+// Pour une image
+const fileInput = document.getElementById('imageFile');
+const file = fileInput.files[0];
+const reader = new FileReader();
+reader.onload = function(e) {
+    const base64Data = e.target.result; // Contient "data:image/jpeg;base64,..."
+    // Envoyer base64Data dans media_data
+};
+reader.readAsDataURL(file);
+```
+
+Python:
+```python
+import base64
+
+# Pour un fichier image
+with open('titre_foncier.jpg', 'rb') as f:
+    image_data = base64.b64encode(f.read()).decode('utf-8')
+    
+# Pour un fichier audio
+with open('question.wav', 'rb') as f:
+    audio_data = base64.b64encode(f.read()).decode('utf-8')
+```
+
+===============================================================================
+CAS D'USAGE FONCIERS SPÉCIFIQUES
+===============================================================================
+
+1. ANALYSE DE TITRES FONCIERS:
+   - Extraction automatique des informations
+   - Vérification de conformité
+   - Détection d'anomalies
+
+2. PLANS CADASTRAUX:
+   - Lecture des coordonnées
+   - Vérification des superficies
+   - Analyse des délimitations
+
+3. QUESTIONS VOCALES:
+   - Consultation mains-libres
+   - Support multilingue (français, fon, yoruba, etc.)
+   - Réponses adaptées au contexte
+
+4. DOCUMENTS ADMINISTRATIFS:
+   - Certificats de propriété
+   - Actes de vente
+   - Procès-verbaux de bornage
+
+===============================================================================
+CODES D'ERREUR SPÉCIFIQUES
+===============================================================================
+
+400 Bad Request:
+- "Question ou média requis"
+- "Format de fichier non supporté"
+- "Fichier trop volumineux"
+
+415 Unsupported Media Type:
+- "Type de média non supporté"
+- "Encodage base64 invalide"
+
+500 Internal Server Error:
+- "Erreur traitement image"
+- "Erreur traitement audio"
+- "Erreur analyse multimodale"
+
+===============================================================================
+BONNES PRATIQUES
+===============================================================================
+
+1. OPTIMISATION:
+   - Compresser les images avant envoi
+   - Utiliser des formats optimaux (JPEG pour photos, PNG pour documents)
+   - Limiter la durée des audios (max 5 minutes)
+
+2. QUALITÉ:
+   - Images nettes et bien éclairées
+   - Audio clair sans bruit de fond
+   - Documents bien cadrés
+
+3. SÉCURITÉ:
+   - Ne pas envoyer de documents confidentiels
+   - Vérifier les permissions avant analyse
+   - Respecter la confidentialité des données
+
+===============================================================================
+INTÉGRATION AVEC L'EXISTANT
+===============================================================================
+
+- ✅ Sauvegarde automatique en base de données
+- ✅ Compatible avec le système de conversations
+- ✅ Historique multimodal conservé
+- ✅ Recherche dans les conversations multimodales
+- ✅ Support des coordonnées géospatiales
+
+===============================================================================

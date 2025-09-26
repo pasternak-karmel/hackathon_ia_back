@@ -507,6 +507,125 @@ DONNÉES DISPONIBLES :
                 "question": question,
                 "answer": "Une erreur s'est produite. Veuillez réessayer."
             }
+    
+    def process_image_with_question(self, question: str, image_base64: str, context: dict = None) -> Dict[str, Any]:
+        """
+        Traite une image avec une question en utilisant Gemini 2.5 Flash
+        """
+        try:
+            import base64
+            
+            # Décoder l'image base64
+            image_data = base64.b64decode(image_base64)
+            
+            # Préparer le contexte foncier
+            system_prompt = """Tu es un expert foncier béninois spécialisé dans l'analyse de documents.
+Analyse cette image en te concentrant sur les aspects fonciers et juridiques.
+Identifie : titres fonciers, plans cadastraux, certificats, coordonnées, superficies, etc.
+Réponds de manière précise et professionnelle."""
+            
+            # Construire le prompt avec la question
+            if question:
+                full_prompt = f"{system_prompt}\n\nQuestion: {question}\n\nAnalyse l'image fournie."
+            else:
+                full_prompt = f"{system_prompt}\n\nAnalyse cette image foncière en détail."
+            
+            # Générer la réponse avec image (utiliser la nouvelle API multimodale)
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash",  # Modèle avec support image
+                contents=[
+                    {
+                        "parts": [
+                            {"text": full_prompt},
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/jpeg",  # Ou déterminer automatiquement
+                                    "data": image_base64
+                                }
+                            }
+                        ]
+                    }
+                ]
+            )
+            
+            # Nettoyer la réponse
+            cleaned_answer = self._clean_response(response.text)
+            
+            return {
+                "success": True,
+                "answer": cleaned_answer,
+                "method": "image_analysis",
+                "processing_info": {
+                    "image_processed": True,
+                    "context_used": bool(context)
+                }
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Erreur traitement image: {str(e)}",
+                "method": "image_analysis"
+            }
+    
+    def process_audio_with_question(self, question: str, audio_base64: str, context: dict = None) -> Dict[str, Any]:
+        """
+        Traite un fichier audio avec une question en utilisant Gemini 2.5 Flash
+        """
+        try:
+            import base64
+            
+            # Décoder l'audio base64
+            audio_data = base64.b64decode(audio_base64)
+            
+            # Préparer le contexte foncier
+            system_prompt = """Tu es un expert foncier béninois. 
+Écoute cet audio et réponds aux questions foncières posées.
+Concentre-toi sur les aspects juridiques, techniques et réglementaires du foncier béninois."""
+            
+            # Construire le prompt
+            if question:
+                full_prompt = f"{system_prompt}\n\nQuestion écrite: {question}\n\nAnalyse aussi le contenu audio."
+            else:
+                full_prompt = f"{system_prompt}\n\nAnalyse et réponds au contenu de cet audio."
+            
+            # Générer la réponse avec audio (utiliser Gemini 2.5 Flash Live pour l'audio)
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash",  # Modèle avec support audio
+                contents=[
+                    {
+                        "parts": [
+                            {"text": full_prompt},
+                            {
+                                "inline_data": {
+                                    "mime_type": "audio/wav",  # Ou déterminer automatiquement
+                                    "data": audio_base64
+                                }
+                            }
+                        ]
+                    }
+                ]
+            )
+            
+            # Nettoyer la réponse
+            cleaned_answer = self._clean_response(response.text)
+            
+            return {
+                "success": True,
+                "answer": cleaned_answer,
+                "method": "audio_analysis",
+                "processing_info": {
+                    "audio_processed": True,
+                    "context_used": bool(context)
+                }
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Erreur traitement audio: {str(e)}",
+                "method": "audio_analysis"
+            }
 
 
 # Instance globale du service

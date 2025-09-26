@@ -21,6 +21,9 @@ urlpatterns = [
     path('conversations-list/', views.get_all_conversations, name='get_all_conversations'),
     path('conversation/<uuid:conversation_id>/messages/', views.get_conversation_messages, name='get_conversation_messages'),
     
+    # Endpoint multimodal (audio, image, vidéo)
+    path('multimodal/', views.ask_chatbot_multimodal, name='ask_chatbot_multimodal'),
+    
     # Routes complètes pour les conversations (ViewSet)
     path('', include(router.urls)),
 ]

@@ -1,0 +1,227 @@
+===============================================================================
+                    ENDPOINT UNIFIÉ MULTIMODAL - CHATBOT FONCIER
+                         (RÉTROCOMPATIBLE + MULTIMODAL)
+===============================================================================
+
+BASE URL: http://127.0.0.1:8083/api/chatbot/
+
+ENDPOINT PRINCIPAL: POST /api/chatbot/ask/
+
+===============================================================================
+FONCTIONNEMENT UNIFIÉ
+===============================================================================
+
+✅ RÉTROCOMPATIBILITÉ TOTALE:
+- Les anciens payloads fonctionnent exactement pareil
+- Même format de réponse streaming
+- Aucun changement pour les intégrations existantes
+
+✅ NOUVELLES CAPACITÉS MULTIMODALES:
+- Support audio, image, vidéo
+- Détection automatique du type de média
+- Streaming unifié pour tous les types
+
+===============================================================================
+1. MODE TEXTE (EXISTANT - INCHANGÉ)
+===============================================================================
+
+Payload:
+{
+    "question": "règlementations sur les titre foncier au bénin?"
+}
+
+Réponse (identique à avant):
+data: {"type": "metadata", "question": "règlementations sur les titre foncier au bénin?", "context": {}, "source": "ANDF + Expert IA", "streaming": true, "conversation_history_count": 0, "conversation_id": "0aa7ebc7-9396-4c24-a012-e778b49131ea", "saved_to_database": true, "media_type": "text", "has_media": false}
+
+data: {"type": "chunk", "content": "En ", "accumulated": "En", "success": true}
+
+data: {"type": "chunk", "content": "tant ", "accumulated": "En tant", "success": true}
+
+data: {"type": "chunk", "content": "qu'expert ", "accumulated": "En tant qu'expert", "success": true}
+
+data: {"type": "complete", "final_text": "En tant qu'expert ayant deux décennies...", "context_used": 5, "source": "ANDF + Expert IA", "success": true}
+
+data: {"type": "saved", "conversation_id": "0aa7ebc7-9396-4c24-a012-e778b49131ea", "user_message_id": "msg-001", "ai_message_id": "msg-002", "success": true, "message": "Conversation sauvegardée en base de données"}
+
+===============================================================================
+2. MODE IMAGE (NOUVEAU)
+===============================================================================
+
+Payload:
+{
+    "question": "Analysez ce titre foncier",
+    "media_type": "image",
+    "media_data": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...",
+    "context": {
+        "commune": "Cotonou"
+    }
+}
+
+OU (format alternatif):
+{
+    "question": "Analysez ce titre foncier",
+    "image_file": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...",
+    "context": {
+        "commune": "Cotonou"
+    }
+}
+
+Réponse:
+data: {"type": "metadata", "question": "Analysez ce titre foncier", "context": {"commune": "Cotonou"}, "source": "ANDF + Expert IA", "streaming": true, "conversation_history_count": 0, "conversation_id": "123e4567-...", "saved_to_database": true, "media_type": "image", "has_media": true}
+
+data: {"type": "chunk", "content": "D'après ", "accumulated": "D'après", "success": true, "media_processed": "image"}
+
+data: {"type": "chunk", "content": "l'analyse ", "accumulated": "D'après l'analyse", "success": true, "media_processed": "image"}
+
+data: {"type": "chunk", "content": "de ", "accumulated": "D'après l'analyse de", "success": true, "media_processed": "image"}
+
+data: {"type": "complete", "final_text": "D'après l'analyse de ce titre foncier, je peux identifier...", "context_used": 0, "source": "ANDF + Expert IA", "success": true, "media_type": "image", "processing_method": "image_analysis"}
+
+data: {"type": "saved", "conversation_id": "123e4567-...", "user_message_id": "msg-003", "ai_message_id": "msg-004", "success": true, "message": "Conversation sauvegardée en base de données"}
+
+===============================================================================
+3. MODE AUDIO (NOUVEAU)
+===============================================================================
+
+Payload:
+{
+    "question": "Complétez avec cette question audio",
+    "media_type": "audio",
+    "media_data": "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEA...",
+    "context": {}
+}
+
+OU (format alternatif):
+{
+    "audio_file": "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEA...",
+    "context": {}
+}
+
+Réponse:
+data: {"type": "metadata", "question": "Complétez avec cette question audio", "context": {}, "source": "ANDF + Expert IA", "streaming": true, "conversation_history_count": 0, "conversation_id": "456e7890-...", "saved_to_database": true, "media_type": "audio", "has_media": true}
+
+data: {"type": "chunk", "content": "D'après ", "accumulated": "D'après", "success": true, "media_processed": "audio"}
+
+data: {"type": "chunk", "content": "votre ", "accumulated": "D'après votre", "success": true, "media_processed": "audio"}
+
+data: {"type": "complete", "final_text": "D'après votre question audio sur la procédure d'immatriculation...", "context_used": 0, "source": "ANDF + Expert IA", "success": true, "media_type": "audio", "processing_method": "audio_analysis"}
+
+data: {"type": "saved", "conversation_id": "456e7890-...", "user_message_id": "msg-005", "ai_message_id": "msg-006", "success": true, "message": "Conversation sauvegardée en base de données"}
+
+===============================================================================
+4. PARAMÈTRES SUPPORTÉS
+===============================================================================
+
+OBLIGATOIRES (au moins un):
+- question (string): Question textuelle
+- media_data (string): Données base64 du fichier
+- audio_file (string): Alternative pour audio
+- image_file (string): Alternative pour image
+
+OPTIONNELS:
+- media_type (string): "text"|"image"|"audio"|"video" (détection auto si non fourni)
+- context (object): Contexte géospatial
+- conversation_id (string): ID de conversation existante
+- conversation_history (array): Historique de conversation
+
+===============================================================================
+5. DÉTECTION AUTOMATIQUE
+===============================================================================
+
+Le système détecte automatiquement le type de média:
+
+1. Si "audio_file" fourni → media_type = "audio"
+2. Si "image_file" fourni → media_type = "image"  
+3. Si "media_data" + "media_type" → utilise media_type
+4. Sinon → media_type = "text" (comportement normal)
+
+===============================================================================
+6. NOUVEAUX CHAMPS DE RÉPONSE
+===============================================================================
+
+MÉTADONNÉES (ajoutés):
+- "media_type": Type de média traité
+- "has_media": Booléen indiquant la présence de média
+
+CHUNKS (ajoutés pour multimodal):
+- "media_processed": Type de média traité dans ce chunk
+
+COMPLETE (ajoutés pour multimodal):
+- "media_type": Type de média traité
+- "processing_method": "text"|"image_analysis"|"audio_analysis"
+
+SAUVEGARDE EN BASE:
+- context_used.media_type: Type de média
+- context_used.processing_method: Méthode utilisée
+
+===============================================================================
+7. ENDPOINTS INCHANGÉS
+===============================================================================
+
+✅ GET /api/chatbot/conversations-list/
+✅ GET /api/chatbot/conversation/{id}/messages/
+✅ GET /api/chatbot/health/
+✅ GET /api/chatbot/info/
+
+Tous fonctionnent exactement pareil et incluent maintenant les conversations multimodales.
+
+===============================================================================
+8. EXEMPLES D'INTÉGRATION
+===============================================================================
+
+JavaScript (rétrocompatible):
+```javascript
+// Mode texte (inchangé)
+fetch('/api/chatbot/ask/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        question: "Qu'est-ce qu'un titre foncier ?"
+    })
+});
+
+// Mode image (nouveau)
+fetch('/api/chatbot/ask/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        question: "Analysez ce document",
+        image_file: base64ImageData
+    })
+});
+
+// Mode audio (nouveau)
+fetch('/api/chatbot/ask/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        audio_file: base64AudioData
+    })
+});
+```
+
+===============================================================================
+9. MIGRATION POUR LES CLIENTS EXISTANTS
+===============================================================================
+
+AUCUNE MIGRATION REQUISE:
+- ✅ Tous les anciens payloads fonctionnent
+- ✅ Même format de réponse streaming
+- ✅ Nouveaux champs optionnels seulement
+- ✅ Rétrocompatibilité totale
+
+POUR AJOUTER LE MULTIMODAL:
+- Ajouter "image_file" ou "audio_file" au payload existant
+- Traiter les nouveaux champs dans les réponses (optionnel)
+
+===============================================================================
+10. AVANTAGES DE CETTE APPROCHE
+===============================================================================
+
+✅ UN SEUL ENDPOINT: Simplifie l'intégration
+✅ RÉTROCOMPATIBLE: Aucun impact sur l'existant  
+✅ FORMAT UNIFIÉ: Même streaming pour tout
+✅ SAUVEGARDE UNIFIÉE: Toutes les conversations dans la même base
+✅ ÉVOLUTIF: Facile d'ajouter d'autres types de média
+
+===============================================================================
