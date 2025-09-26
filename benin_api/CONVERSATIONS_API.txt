@@ -1,0 +1,343 @@
+===============================================================================
+                    API CONVERSATIONS CHATBOT FONCIER BÉNINOIS
+===============================================================================
+
+BASE URL: http://127.0.0.1:8083/api/chatbot/
+
+===============================================================================
+1. LISTER TOUTES LES CONVERSATIONS
+===============================================================================
+
+Endpoint: GET /api/chatbot/conversations/
+Description: Récupère la liste de toutes les conversations
+
+Exemple de réponse:
+{
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "title": "Qu'est-ce qu'un titre foncier au Bénin ?",
+            "created_at": "2025-01-25T10:30:00Z",
+            "updated_at": "2025-01-25T10:35:00Z",
+            "messages_count": 4,
+            "last_message": {
+                "role": "assistant",
+                "content": "Un titre foncier constitue le document officiel et inattaquable qui atteste de la propriété...",
+                "timestamp": "2025-01-25T10:35:00Z"
+            }
+        },
+        {
+            "id": "456e7890-e89b-12d3-a456-426614174001",
+            "title": "Procédure d'immatriculation",
+            "created_at": "2025-01-25T09:15:00Z",
+            "updated_at": "2025-01-25T09:20:00Z",
+            "messages_count": 2,
+            "last_message": {
+                "role": "user",
+                "content": "Comment faire une demande d'immatriculation ?",
+                "timestamp": "2025-01-25T09:20:00Z"
+            }
+        }
+    ]
+}
+
+===============================================================================
+2. CRÉER UNE NOUVELLE CONVERSATION
+===============================================================================
+
+Endpoint: POST /api/chatbot/conversations/
+Description: Crée une nouvelle conversation
+
+Corps de la requête:
+{
+    "title": "Ma nouvelle conversation sur le foncier"
+}
+
+Exemple de réponse:
+{
+    "id": "789e0123-e89b-12d3-a456-426614174002",
+    "title": "Ma nouvelle conversation sur le foncier",
+    "created_at": "2025-01-25T11:00:00Z",
+    "updated_at": "2025-01-25T11:00:00Z",
+    "is_active": true,
+    "messages": [],
+    "messages_count": 0
+}
+
+===============================================================================
+3. OBTENIR UNE CONVERSATION SPÉCIFIQUE
+===============================================================================
+
+Endpoint: GET /api/chatbot/conversations/{id}/
+Description: Récupère tous les détails d'une conversation avec ses messages
+
+Exemple de réponse:
+{
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "title": "Qu'est-ce qu'un titre foncier au Bénin ?",
+    "created_at": "2025-01-25T10:30:00Z",
+    "updated_at": "2025-01-25T10:35:00Z",
+    "is_active": true,
+    "messages_count": 4,
+    "messages": [
+        {
+            "id": "msg-001",
+            "role": "user",
+            "content": "Qu'est-ce qu'un titre foncier au Bénin ?",
+            "timestamp": "2025-01-25T10:30:00Z",
+            "context_used": {}
+        },
+        {
+            "id": "msg-002",
+            "role": "assistant",
+            "content": "Un titre foncier constitue le document officiel et inattaquable qui atteste de la propriété exclusive d'une parcelle de terrain au Bénin...",
+            "timestamp": "2025-01-25T10:30:15Z",
+            "context_used": {
+                "documents_used": 3,
+                "context": {}
+            }
+        },
+        {
+            "id": "msg-003",
+            "role": "user",
+            "content": "Comment l'obtenir ?",
+            "timestamp": "2025-01-25T10:35:00Z",
+            "context_used": {}
+        },
+        {
+            "id": "msg-004",
+            "role": "assistant",
+            "content": "Pour obtenir un titre foncier au Bénin, vous devez suivre la procédure d'immatriculation...",
+            "timestamp": "2025-01-25T10:35:10Z",
+            "context_used": {
+                "documents_used": 2,
+                "context": {}
+            }
+        }
+    ]
+}
+
+===============================================================================
+4. ENVOYER UN MESSAGE DANS UNE CONVERSATION
+===============================================================================
+
+Endpoint: POST /api/chatbot/conversations/{id}/send_message/
+Description: Envoie un message dans une conversation et obtient la réponse IA
+
+Corps de la requête:
+{
+    "content": "Comment faire une demande d'immatriculation ?",
+    "context": {
+        "coordinates": [404000, 719000]
+    }
+}
+
+Exemple de réponse:
+{
+    "success": true,
+    "user_message": {
+        "id": "msg-005",
+        "role": "user",
+        "content": "Comment faire une demande d'immatriculation ?",
+        "timestamp": "2025-01-25T11:10:00Z",
+        "context_used": {}
+    },
+    "ai_message": {
+        "id": "msg-006",
+        "role": "assistant",
+        "content": "Pour faire une demande d'immatriculation au Bénin, vous devez vous adresser à l'ANDF avec les documents suivants...",
+        "timestamp": "2025-01-25T11:10:15Z",
+        "context_used": {
+            "documents_used": 4,
+            "context": {
+                "coordinates": [404000, 719000]
+            }
+        }
+    },
+    "conversation": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "title": "Comment faire une demande d'immatriculation ?",
+        "created_at": "2025-01-25T10:30:00Z",
+        "updated_at": "2025-01-25T11:10:15Z",
+        "is_active": true,
+        "messages_count": 6,
+        "messages": [...]
+    }
+}
+
+===============================================================================
+5. SUPPRIMER UNE CONVERSATION
+===============================================================================
+
+Endpoint: DELETE /api/chatbot/conversations/{id}/delete_conversation/
+Description: Supprime une conversation (soft delete)
+
+Exemple de réponse:
+{
+    "success": true,
+    "message": "Conversation supprimée"
+}
+
+===============================================================================
+6. OBTENIR LES CONVERSATIONS RÉCENTES
+===============================================================================
+
+Endpoint: GET /api/chatbot/conversations/recent/
+Description: Récupère les 10 conversations les plus récentes
+
+Exemple de réponse:
+{
+    "success": true,
+    "count": 3,
+    "conversations": [
+        {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "title": "Qu'est-ce qu'un titre foncier au Bénin ?",
+            "created_at": "2025-01-25T10:30:00Z",
+            "updated_at": "2025-01-25T10:35:00Z",
+            "messages_count": 4,
+            "last_message": {
+                "role": "assistant",
+                "content": "Un titre foncier constitue le document officiel...",
+                "timestamp": "2025-01-25T10:35:00Z"
+            }
+        }
+    ]
+}
+
+===============================================================================
+7. ENDPOINT PRINCIPAL MODIFIÉ (AVEC SAUVEGARDE AUTOMATIQUE)
+===============================================================================
+
+7.1 POSER UNE QUESTION AVEC STREAMING + SAUVEGARDE AUTO
+Endpoint: POST /api/chatbot/ask/
+Description: Pose une question avec réponse en streaming ET sauvegarde automatique en base
+
+Corps de la requête:
+{
+    "question": "Qu'est-ce qu'un titre foncier au Bénin ?",
+    "context": {
+        "coordinates": [404000, 719000]
+    },
+    "conversation_id": "uuid-optional",  // Pour continuer une conversation existante
+    "conversation_history": []
+}
+
+Réponse: Streaming Server-Sent Events avec sauvegarde automatique
+- Chaque question/réponse est automatiquement sauvegardée
+- Retourne l'ID de la conversation dans les métadonnées
+- Envoie un message final avec les IDs des messages sauvegardés
+
+Exemple de flux de réponse:
+data: {"type": "metadata", "conversation_id": "123e4567-...", "saved_to_database": true, ...}
+data: {"type": "chunk", "content": "En tant qu'expert...", ...}
+...
+data: {"type": "saved", "conversation_id": "123e4567-...", "user_message_id": "msg-001", "ai_message_id": "msg-002", "success": true}
+
+===============================================================================
+8. NOUVEAUX ENDPOINTS SIMPLES POUR RÉCUPÉRER LES CONVERSATIONS
+===============================================================================
+
+8.1 LISTER TOUTES LES CONVERSATIONS SAUVEGARDÉES
+Endpoint: GET /api/chatbot/conversations-list/
+Description: Récupère toutes les conversations sauvegardées automatiquement
+
+Exemple de réponse:
+{
+    "success": true,
+    "count": 3,
+    "conversations": [
+        {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "title": "Qu'est-ce qu'un titre foncier au Bénin ?",
+            "created_at": "2025-01-25T10:30:00.000Z",
+            "updated_at": "2025-01-25T10:35:00.000Z",
+            "messages_count": 4,
+            "last_message": {
+                "role": "assistant",
+                "content": "Un titre foncier constitue le document officiel et inattaquable qui atteste de la propriété...",
+                "timestamp": "2025-01-25T10:35:00.000Z"
+            }
+        }
+    ]
+}
+
+8.2 RÉCUPÉRER TOUS LES MESSAGES D'UNE CONVERSATION
+Endpoint: GET /api/chatbot/conversation/{conversation_id}/messages/
+Description: Récupère tous les messages d'une conversation spécifique
+
+Exemple de réponse:
+{
+    "success": true,
+    "conversation": {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "title": "Qu'est-ce qu'un titre foncier au Bénin ?",
+        "created_at": "2025-01-25T10:30:00.000Z",
+        "updated_at": "2025-01-25T10:35:00.000Z",
+        "messages_count": 4
+    },
+    "messages": [
+        {
+            "id": "msg-001",
+            "role": "user",
+            "content": "Qu'est-ce qu'un titre foncier au Bénin ?",
+            "timestamp": "2025-01-25T10:30:00.000Z",
+            "context_used": {"context": {}}
+        },
+        {
+            "id": "msg-002",
+            "role": "assistant",
+            "content": "Un titre foncier constitue le document officiel et inattaquable...",
+            "timestamp": "2025-01-25T10:30:15.000Z",
+            "context_used": {"documents_used": 3, "context": {}}
+        }
+    ]
+}
+
+===============================================================================
+9. AUTRES ENDPOINTS EXISTANTS (INCHANGÉS)
+===============================================================================
+
+7.2 CONVERSATION SIMPLE
+Endpoint: POST /api/chatbot/conversation/
+Description: Conversation avec historique (réponse JSON classique)
+
+7.3 SANTÉ DU CHATBOT
+Endpoint: GET /api/chatbot/health/
+Description: Vérification de l'état du chatbot
+
+7.4 INFORMATIONS DU CHATBOT
+Endpoint: GET /api/chatbot/info/
+Description: Informations sur les capacités du chatbot
+
+===============================================================================
+CODES D'ERREUR POSSIBLES
+===============================================================================
+
+400 Bad Request:
+- Contenu du message manquant
+- Paramètres invalides
+
+404 Not Found:
+- Conversation introuvable
+
+500 Internal Server Error:
+- Erreur du service IA
+- Erreur de base de données
+
+===============================================================================
+NOTES IMPORTANTES
+===============================================================================
+
+1. Toutes les conversations sont liées à l'utilisateur authentifié
+2. Les conversations anonymes sont supportées (user=null)
+3. Les messages sont ordonnés par timestamp croissant
+4. Le titre de la conversation est auto-généré à partir du premier message
+5. Les coordonnées géospatiales sont optionnelles dans le contexte
+6. L'historique de conversation est limité aux 10 derniers messages
+7. Les caractères Unicode français sont correctement encodés
+
+===============================================================================

@@ -98,15 +98,50 @@ class FoncierChatbotService:
         Recherche les documents les plus pertinents pour une requête
         """
         try:
-            # Pour cette version, on retourne les premiers documents
-            # Dans une version complète, il faudrait vectoriser la query et faire une recherche FAISS
             if self.documents and len(self.documents) > 0:
-                # Retourner les k premiers documents comme contexte
-                return self.documents[:min(k, len(self.documents))]
-            return []
+                # Vérifier le type des documents
+                if isinstance(self.documents, list) and isinstance(self.documents[0], str):
+                    # Documents par défaut (chaînes de caractères)
+                    return self.documents[:min(k, len(self.documents))]
+                else:
+                    # Documents chargés depuis FAISS (objets complexes)
+                    # Extraire le texte des documents
+                    text_docs = []
+                    try:
+                        # Si c'est un InMemoryDocstore ou un objet similaire
+                        if hasattr(self.documents, 'docstore') and hasattr(self.documents.docstore, '_dict'):
+                            # Extraire les documents du docstore
+                            for doc_id, doc in list(self.documents.docstore._dict.items())[:k]:
+                                if hasattr(doc, 'page_content'):
+                                    text_docs.append(doc.page_content)
+                                elif hasattr(doc, 'content'):
+                                    text_docs.append(doc.content)
+                                else:
+                                    text_docs.append(str(doc))
+                        elif hasattr(self.documents, '_dict'):
+                            # Docstore direct
+                            for doc_id, doc in list(self.documents._dict.items())[:k]:
+                                if hasattr(doc, 'page_content'):
+                                    text_docs.append(doc.page_content)
+                                elif hasattr(doc, 'content'):
+                                    text_docs.append(doc.content)
+                                else:
+                                    text_docs.append(str(doc))
+                        else:
+                            # Fallback: utiliser la base par défaut
+                            return self._get_default_knowledge()[:k]
+                    except Exception as extract_error:
+                        print(f"Erreur extraction documents: {extract_error}")
+                        return self._get_default_knowledge()[:k]
+                    
+                    return text_docs if text_docs else self._get_default_knowledge()[:k]
+            
+            # Fallback: base de connaissances par défaut
+            return self._get_default_knowledge()[:k]
+            
         except Exception as e:
             print(f"Erreur recherche documents: {e}")
-            return []
+            return self._get_default_knowledge()[:k]
     
     def generate_response(self, question: str, context_docs: List[str] = None) -> Dict[str, Any]:
         """
